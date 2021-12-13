@@ -1,7 +1,15 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, TextInput, ScrollView } from 'react-native';
 import { theme } from "./colors";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+/*
+ * 1) AsyncStorage : react-native 의 로컬 저장소.
+ *    key 지정시 "@test" 와 같이 앞에 @를 붙여야 한다.
+ */
+
+const STORAGE_KEY = "@toDos";
 
 export default function App() {
   const [working, setWorking] = useState(true);
@@ -10,7 +18,20 @@ export default function App() {
   const travel = () => setWorking(false);
   const work = () => setWorking(true); 
   const onChangeText = (payload) => setText(payload);
-  const addTodo = () => {
+  const saveToDos = async (toSave) => {
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+  };
+  const loadToDos = async () => {
+    try {
+      setToDos(JSON.parse(await AsyncStorage.getItem(STORAGE_KEY)));
+    } catch(e) {
+      console.log(e);
+    }
+  };
+  useEffect(() => {
+    loadToDos();
+  }, []);
+  const addTodo = async () => {
     if(text === "") {
       return ;
     }
@@ -18,9 +39,10 @@ export default function App() {
     const newToDos = Object.assign(
       {},
       toDos,
-      {[Date.now()]: {text, work:working}}
+      {[Date.now()]: {text, working}}
     );
     setToDos(newToDos);
+    await saveToDos(newToDos);
     setText("");
   };
 
@@ -44,11 +66,12 @@ export default function App() {
         style={styles.input}
       />
       <ScrollView>
-        {working ? (Object.keys(toDos).map((key) => 
-          <View style={styles.toDo}key={key}>
+        {Object.keys(toDos).map((key) => (
+          toDos[key].working === working ? (<View style={styles.toDo}key={key}>
             <Text style={styles.toDoText}>{toDos[key].text}</Text>
           </View>
-        )) : null}
+          ) : null
+        ))}
       </ScrollView>
     </View>
   );
