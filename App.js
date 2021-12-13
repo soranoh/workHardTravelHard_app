@@ -3,11 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, TextInput, ScrollView } from 'react-native';
 import { theme } from "./colors";
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-/*
- * 1) AsyncStorage : react-native 의 로컬 저장소.
- *    key 지정시 "@test" 와 같이 앞에 @를 붙여야 한다.
- */
+import {Fontisto} from '@expo/vector-icons';
 
 const STORAGE_KEY = "@toDos";
 
@@ -15,6 +11,7 @@ export default function App() {
   const [working, setWorking] = useState(true);
   const [text, setText] = useState("");
   const [toDos, setToDos] = useState({});
+
   const travel = () => setWorking(false);
   const work = () => setWorking(true); 
   const onChangeText = (payload) => setText(payload);
@@ -45,6 +42,13 @@ export default function App() {
     await saveToDos(newToDos);
     setText("");
   };
+  const deleteToDo = async (key) => {
+    const newToDos = {...toDos};
+    delete newToDos[key];
+
+    setToDos(newToDos);
+    await saveToDos(newToDos);
+  };
 
   return (
     <View style={styles.container}>
@@ -69,6 +73,9 @@ export default function App() {
         {Object.keys(toDos).map((key) => (
           toDos[key].working === working ? (<View style={styles.toDo}key={key}>
             <Text style={styles.toDoText}>{toDos[key].text}</Text>
+            <TouchableOpacity onPress={() => deleteToDo(key)}>
+              <Fontisto name="trash" size={18} color="white" />
+            </TouchableOpacity>
           </View>
           ) : null
         ))}
@@ -106,6 +113,9 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     paddingHorizontal: 20,
     borderRadius: 15,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between"
   },
   toDoText: {
     color: "white",
