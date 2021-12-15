@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, TextInput, ScrollView } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, TextInput, ScrollView, Alert, Platform } from 'react-native';
 import { theme } from "./colors";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {Fontisto, MaterialCommunityIcons, FontAwesome } from '@expo/vector-icons';
@@ -57,11 +57,31 @@ export default function App() {
     setText("");
   };
   const deleteToDo = async (key) => {
-    const newToDos = {...toDos};
-    delete newToDos[key];
-
-    setToDos(newToDos);
-    await saveToDos(newToDos);
+    if(Platform.OS === "web") {
+      const ok = confirm("Do you want to delete this To Do?");
+      if(ok) {
+        const newToDos = {...toDos};
+        delete newToDos[key];
+        
+        setToDos(newToDos);
+        saveToDos(newToDos);
+      }
+    } else {
+      Alert.alert("Delete To Do", "Are you sure?", [
+        {
+          text: "Accept",
+          style: "destructive",
+          onPress: () => {
+            const newToDos = {...toDos};
+            delete newToDos[key];
+            
+            setToDos(newToDos);
+            saveToDos(newToDos);
+          }
+        },
+        { text: "Cancel", style: "cancel"}
+      ]);
+    }
   };
   const changeCheck = async (key) => {
     const newToDos = {...toDos};
@@ -132,6 +152,14 @@ export default function App() {
       <ScrollView>
         {Object.keys(toDos).map((key) => (
           toDos[key].working === working ? (<View style={styles.toDo}key={key}>
+
+            <TouchableOpacity onPress={() => changeCheck(key)}>
+              {toDos[key].checkToDo ? (
+                <MaterialCommunityIcons name="checkbox-marked" size={18} color="white" />) : (
+                <MaterialCommunityIcons name="checkbox-blank-outline" size={18} color="white" />
+              )}
+            </TouchableOpacity>
+
             {toDos[key].updateCheck ? (<TextInput
               onSubmitEditing={() => updateToDo(key)}
               onChangeText={onChangeUpdateText}
@@ -144,12 +172,6 @@ export default function App() {
             
             <TouchableOpacity onPress={() => changeTextInput(key)}>
               <FontAwesome name="pencil" size={18} color="white" />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => changeCheck(key)}>
-              {toDos[key].checkToDo ? (
-                <MaterialCommunityIcons name="checkbox-marked" size={18} color="white" />) : (
-                <MaterialCommunityIcons name="checkbox-blank-outline" size={18} color="white" />
-              )}
             </TouchableOpacity>
             <TouchableOpacity onPress={() => deleteToDo(key)}>
               <Fontisto name="trash" size={18} color="white" />
