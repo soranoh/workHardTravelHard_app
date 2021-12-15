@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, TextInput, ScrollView } from 'react-native';
 import { theme } from "./colors";
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {Fontisto} from '@expo/vector-icons';
+import {Fontisto, MaterialCommunityIcons, FontAwesome } from '@expo/vector-icons';
 
 const STORAGE_KEY = "@toDos";
 
@@ -11,16 +11,30 @@ export default function App() {
   const [working, setWorking] = useState(true);
   const [text, setText] = useState("");
   const [toDos, setToDos] = useState({});
+  const [checkToDo, setCheckToDo] = useState(false);
+  const [updateText, setUpdateText] = useState("");
+  const updateCheck = false;
 
-  const travel = () => setWorking(false);
-  const work = () => setWorking(true); 
+  const travel = async () => {
+    setWorking(false);
+    await AsyncStorage.setItem("@curLocation", "false");
+  };
+  const work = async () => {
+    setWorking(true);
+    await AsyncStorage.setItem("@curLocation", "true");
+  }; 
   const onChangeText = (payload) => setText(payload);
   const saveToDos = async (toSave) => {
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
   };
   const loadToDos = async () => {
     try {
+      const curLocation = await AsyncStorage.getItem("@curLocation");
+      if(JSON.parse(await AsyncStorage.getItem(STORAGE_KEY)) === null) {
+        return;
+      }
       setToDos(JSON.parse(await AsyncStorage.getItem(STORAGE_KEY)));
+      setWorking(curLocation === "true" ? true : false);
     } catch(e) {
       console.log(e);
     }
@@ -36,7 +50,7 @@ export default function App() {
     const newToDos = Object.assign(
       {},
       toDos,
-      {[Date.now()]: {text, working}}
+      {[Date.now()]: {text, working, checkToDo, updateCheck}}
     );
     setToDos(newToDos);
     await saveToDos(newToDos);
@@ -49,6 +63,52 @@ export default function App() {
     setToDos(newToDos);
     await saveToDos(newToDos);
   };
+  const changeCheck = async (key) => {
+    const newToDos = {...toDos};
+    const checkValue = newToDos[key].checkToDo;
+    newToDos[key].checkToDo = !checkValue;
+
+    setToDos(newToDos);
+    await saveToDos(newToDos);
+  };
+  const changeTextInput = (idx) => {
+    const newToDos = {...toDos};
+    const beforeCheck = newToDos[idx].updateCheck;
+    if(beforeCheck) {
+      setUpdateCheck(newToDos);
+    } else {
+      setUpdateCheck(newToDos);
+      newToDos[idx].updateCheck = true;
+    }
+    setUpdateText(newToDos[idx].text);
+
+    setToDos(newToDos);
+  };
+  const updateToDo = async (key) => {
+    const newToDos = {...toDos};
+    if(updateText === "") {
+      setUpdateCheck(newToDos);
+      setToDos(newToDos);
+      return;
+    }
+
+    newToDos[key].text = updateText;
+    setUpdateCheck(newToDos);
+
+    setToDos(newToDos);
+    await saveToDos(newToDos);
+    setUpdateText("");
+  };
+  const onChangeUpdateText = (payload) => setUpdateText(payload);
+  const setUpdateCheck = (newToDos) => {
+    Object.keys(newToDos).map((key) => newToDos[key].updateCheck = false);
+  };
+  const onBlur = (key) => {
+    const newToDos = {...toDos};
+    newToDos[key].updateCheck = false;
+
+    setToDos(newToDos);
+  }
 
   return (
     <View style={styles.container}>
@@ -66,13 +126,31 @@ export default function App() {
         onChangeText={onChangeText}
         returnKeyType="done"
         value={text}
-        placeholder={working ? "Add a To Do" : "Where do you want to go?"}
+        placeholder={working ? "What do you have to do?" : "Where do you want to go?"}
         style={styles.input}
       />
       <ScrollView>
         {Object.keys(toDos).map((key) => (
           toDos[key].working === working ? (<View style={styles.toDo}key={key}>
-            <Text style={styles.toDoText}>{toDos[key].text}</Text>
+            {toDos[key].updateCheck ? (<TextInput
+              onSubmitEditing={() => updateToDo(key)}
+              onChangeText={onChangeUpdateText}
+              onBlur={() => onBlur(key)}
+              value={updateText}
+              placeholder={toDos[key].text}
+              style={styles.updateText} />) : (
+              <Text style={toDos[key].checkToDo ? {...styles.toDoText, textDecorationLine: "line-through", color: "gray"} : styles.toDoText}>{toDos[key].text}</Text>
+            )}
+            
+            <TouchableOpacity onPress={() => changeTextInput(key)}>
+              <FontAwesome name="pencil" size={18} color="white" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => changeCheck(key)}>
+              {toDos[key].checkToDo ? (
+                <MaterialCommunityIcons name="checkbox-marked" size={18} color="white" />) : (
+                <MaterialCommunityIcons name="checkbox-blank-outline" size={18} color="white" />
+              )}
+            </TouchableOpacity>
             <TouchableOpacity onPress={() => deleteToDo(key)}>
               <Fontisto name="trash" size={18} color="white" />
             </TouchableOpacity>
@@ -120,6 +198,11 @@ const styles = StyleSheet.create({
   toDoText: {
     color: "white",
     fontSize: 16,
-    fontWeight: "500"
+    fontWeight: "500",
+    width: 250
+  },
+  updateText: {
+    backgroundColor: "white",
+    width: 250
   }
 });
